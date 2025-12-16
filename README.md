@@ -1,2 +1,3 @@
 # chipolata
-Chip-8 Emulator
+
+The SPICY Chip-8 Emulator

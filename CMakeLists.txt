@@ -20,6 +20,7 @@ set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
+    src/emu.cpp
 )
 
 

@@ -1,11 +1,51 @@
 #ifndef EMU_HPP
 #define EMU_HPP
 
+#include <cstddef>
+#include <string>
+
 namespace chp {
+
+constexpr size_t MEMORY_SIZE = 4096;
+constexpr size_t NUM_REGISTERS = 16;
+constexpr size_t WIDTH = 64;
+constexpr size_t HEIGHT = 32;
 
 class Emulator {
   public:
-    Emulator();
+    Emulator(const std::string &file);
+    ~Emulator();
+
+    void cycle();
+    void quit();
+
+    void display(int x, int y, int height);
+
+  private:
+    // 0x000-0x1FF - Chip 8 interpreter (contains font set in emu)
+    // 0x050-0x0A0 - Used for the built in 4x5 pixel font set (0-F)
+    // 0x200-0xFFF - Program ROM and work RAM
+    unsigned char memory[MEMORY_SIZE];
+    unsigned char reg_V[NUM_REGISTERS];
+
+    unsigned short I = 0;      // index reg
+    unsigned short pc = 0x200; // program counter reg
+
+    unsigned char graphics[WIDTH * HEIGHT];
+    unsigned short stack[16];
+    unsigned short sp = 0;
+    // HEX based keypad 0xF
+    unsigned char keys[16];
+
+    // current opcode
+    unsigned short opcode = 0;
+
+    enum class State { QUIT, RUN } state;
+    int scale_factor = 1;
+
+    unsigned char delay_timer = 0, sound_timer = 0;
+
+    bool switch_next = false;
 };
 
 } // namespace chp
