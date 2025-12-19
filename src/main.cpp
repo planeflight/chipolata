@@ -8,7 +8,8 @@
 #include "SDL3/SDL_video.h"
 #include "emu.hpp"
 
-constexpr static int WIDTH = 1080, HEIGHT = 720;
+constexpr static int WIDTH = chp::WIDTH * chp::SCALE_FACTOR,
+                     HEIGHT = chp::HEIGHT * chp::SCALE_FACTOR;
 
 constexpr static int FPS = 60;
 
@@ -40,12 +41,18 @@ int main() {
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        const bool *keys = SDL_GetKeyboardState(nullptr);
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
+        emu.render(renderer);
+
         SDL_RenderPresent(renderer);
         SDL_DelayNS(std::max(
             (double)FPS / 1000000000 - (SDL_GetTicksNS() - time), 0.0));
         time = SDL_GetTicksNS();
+
+        emu.cycle();
     }
 
     SDL_DestroyRenderer(renderer);

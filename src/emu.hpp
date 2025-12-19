@@ -1,6 +1,8 @@
 #ifndef EMU_HPP
 #define EMU_HPP
 
+#include <SDL3/SDL_render.h>
+
 #include <cstddef>
 #include <string>
 
@@ -11,6 +13,8 @@ constexpr size_t NUM_REGISTERS = 16;
 constexpr size_t WIDTH = 64;
 constexpr size_t HEIGHT = 32;
 
+constexpr size_t SCALE_FACTOR = 20;
+
 class Emulator {
   public:
     Emulator(const std::string &file);
@@ -19,7 +23,10 @@ class Emulator {
     void cycle();
     void quit();
 
-    void display(int x, int y, int height);
+    void display(unsigned short x, unsigned short y, unsigned short height);
+    void update_keys();
+
+    void render(SDL_Renderer *renderer);
 
   private:
     // 0x000-0x1FF - Chip 8 interpreter (contains font set in emu)
@@ -46,6 +53,7 @@ class Emulator {
     unsigned char delay_timer = 0, sound_timer = 0;
 
     bool switch_next = false;
+    bool draw = false;
 };
 
 } // namespace chp

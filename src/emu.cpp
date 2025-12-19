@@ -20,11 +20,21 @@ Emulator::Emulator(const std::string &file) {
         throw std::runtime_error("Failed to open file");
         return;
     }
+    const unsigned short i = pc;
 
-    char byte;
-    int i = 512;
-    while ((byte = fgetc(fd)) != EOF) {
-        memory[i++] = byte;
+    // Get/check rom size
+    fseek(fd, 0, SEEK_END);
+    const size_t rom_size = ftell(fd);
+    const size_t max_size = MEMORY_SIZE - i;
+    rewind(fd);
+
+    if (rom_size > max_size) {
+        throw std::runtime_error("Rom file is too big!");
+        return;
+    }
+
+    if (fread(&memory[i], rom_size, 1, fd) != 1) {
+        throw std::runtime_error("Could not read ROM file into memory.");
     }
 
     // Close the file
@@ -43,6 +53,8 @@ void Emulator::cycle() {
     // fetch
     // big to little endian
     opcode = memory[pc] << 8 | memory[pc + 1];
+    printf(
+        "opcode: %x %x %x\n", opcode, opcode & 0xF000, (opcode >> 12) & 0x0F);
     int NNN = opcode & 0x0FFF;
     int NN = opcode & 0x00FF;
     int N = opcode & 0x000F;
@@ -52,21 +64,18 @@ void Emulator::cycle() {
     // decode
     switch (opcode & 0xF000) {
         case 0x0000:
-            switch (opcode & 0x000F) {
-                case 0x0000: // 0x00E0: Clears the screen
-                    memset(graphics, 0, sizeof(graphics));
+            if (opcode == 0x00E0) // 0x00E0: Clears the screen
+            {
+                memset(graphics, 0, sizeof(graphics));
+                pc += 2;
+                draw = true;
+            } else if (opcode == 0x00EE) // 0x00EE: Returns from subroutine
+            {
+                if (sp == 0) {
+                    printf("Can't have sp less than 0");
                     break;
-
-                case 0x000E: // 0x00EE: Returns from subroutine
-                    if (sp == 0) {
-                        printf("Can't have sp less than 0");
-                        break;
-                    }
-                    pc = stack[--sp];
-                    break;
-
-                default:
-                    printf("Unknown opcode [0x0000]: 0x%X\n", opcode);
+                }
+                pc = stack[--sp];
             }
             break;
         case 0x1000: // 1NNN: Jump/goto to address NNN
@@ -163,24 +172,26 @@ void Emulator::cycle() {
             reg_V[X] = rand() & NN;
             pc += 2;
             break;
-        case 0xD000: // 0xDXYN: Display(Vx, Vy, NN)
-            display(reg_V[X], reg_V[Y], NN);
+        case 0xD000: // 0xDXYN: Display(Vx, Vy, N)
+            display(reg_V[X], reg_V[Y], N);
+            draw = true;
             pc += 2;
             break;
         case 0xE000:
             switch (opcode & 0x000F) {
                 case 0x000E: // 0xEX9E: if (key() == VX)
-                    if (key() == reg_V[X]) {
-                        switch_next = true;
-                    }
+                             // if (key() == reg_V[X]) {
+                    switch_next = true;
+                    // }
                     break;
                 case 0x0001: // 0xEXA1: if (key() != VX)
-                    if (key() != reg_V[X]) {
-                        switch_next = true;
-                    }
+                             // if (key() != reg_V[X]) {
+                    switch_next = true;
+                    // }
                     break;
             }
             pc += 2;
+            printf("handled\n");
             break;
         case 0xF000:
             switch (opcode & 0x00FF) {
@@ -199,7 +210,7 @@ void Emulator::cycle() {
                     I += reg_V[X];
                     break;
                 case 0x0029: // 0xFX29: I = sprite_addr[Vx]
-                    I = sprite_addr[X];
+                    // I = sprite_addr[X];
                     break;
                 case 0x0033: // 0xFX33: TODO: this
                     memory[I] = reg_V[X] / 100;
@@ -236,4 +247,40 @@ void Emulator::cycle() {
 
 void Emulator::quit() {
     state = State::QUIT;
+}
+
+void Emulator::display(unsigned short x,
+                       unsigned short y,
+                       unsigned short height) {
+    reg_V[0xF] = 0;
+    // each row
+    for (unsigned short i = 0; i < height; ++i) {
+        unsigned short value = memory[I + i];
+        // each pixel in the row
+        for (unsigned short j = 0; j < 8; ++j) {
+            if (i + y >= HEIGHT || j + x >= WIDTH) continue;
+            // if current pixel is 1
+            if (((0x80 >> j) & value) != 0) {
+                // if theres already 1 on graphics, collision
+                if (graphics[(i + y) * WIDTH + x + j] == 1) {
+                    reg_V[0xF] = 1;
+                }
+                graphics[(i + y) * WIDTH + x + j] ^= 1;
+            }
+        }
+    }
+}
+
+void Emulator::render(SDL_Renderer *renderer) {
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    for (int y = 0; y < HEIGHT; ++y) {
+        for (int x = 0; x < WIDTH; ++x) {
+            if (graphics[y * WIDTH + x] != 0) {
+                SDL_FRect rect;
+                rect.x = x * SCALE_FACTOR, rect.y = y * SCALE_FACTOR,
+                rect.w = SCALE_FACTOR, rect.h = SCALE_FACTOR;
+                SDL_RenderFillRect(renderer, &rect);
+            }
+        }
+    }
 }
