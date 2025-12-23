@@ -14,23 +14,25 @@ constexpr size_t NUM_KEYS = 16;
 constexpr size_t WIDTH = 64;
 constexpr size_t HEIGHT = 32;
 
-constexpr size_t SCALE_FACTOR = 20;
 constexpr size_t FONTSET_SIZE = 80;
 constexpr size_t FONT_START_ADDR = 0x50;
+constexpr size_t PROG_START_ADDR = 0x200;
 
 class Emulator {
   public:
+    enum class State { QUIT, PAUSE, RUN };
+
     Emulator(const std::string &file);
     ~Emulator();
 
     void cycle();
     void timers();
-    void quit();
+    State get_state() const;
 
     void display(unsigned short x, unsigned short y, unsigned short height);
     void update_keys(const bool *sdl_keys);
 
-    void render(SDL_Renderer *renderer);
+    void render(SDL_Renderer *renderer, int scale_factor);
 
     void pause_toggle();
 
@@ -41,8 +43,8 @@ class Emulator {
     unsigned char memory[MEMORY_SIZE];
     unsigned char reg_V[NUM_REGISTERS];
 
-    unsigned short I = 0;      // index reg
-    unsigned short pc = 0x200; // program counter reg
+    unsigned short I = 0;                // index reg
+    unsigned short pc = PROG_START_ADDR; // program counter reg
 
     unsigned char graphics[WIDTH * HEIGHT];
     unsigned short stack[16];
@@ -53,7 +55,7 @@ class Emulator {
     // current opcode
     unsigned short opcode = 0;
 
-    enum class State { QUIT, PAUSE, RUN } state = Emulator::State::RUN;
+    State state = Emulator::State::RUN;
     int scale_factor = 1;
 
     unsigned char delay_timer = 0, sound_timer = 0;

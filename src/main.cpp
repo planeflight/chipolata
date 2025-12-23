@@ -8,26 +8,64 @@
 #include "SDL3/SDL_video.h"
 #include "emu.hpp"
 
-constexpr static int WIDTH = chp::WIDTH * chp::SCALE_FACTOR,
-                     HEIGHT = chp::HEIGHT * chp::SCALE_FACTOR;
+inline void print_usage() {
+    spdlog::error(
+        "Invalid Usage: chipolata <file> "
+        "<optional-scale-factor> <optional-fps>");
+}
 
-constexpr static int FPS = 60;
+int main(int argc, char **argv) {
+    if (argc < 2 || argc > 4) {
+        print_usage();
+        return 1;
+    }
 
-int main() {
+    int fps = 60;
+    int scale_factor = 20;
+    std::string file;
+    file = argv[1];
+    if (argc > 2) {
+        scale_factor = std::atoi(argv[2]);
+        if (scale_factor <= 0) {
+            scale_factor = 20;
+            spdlog::error("Scale factor cannot be <= 0!");
+            return 1;
+        }
+        if (argc == 4) {
+            fps = std::atoi(argv[3]);
+            if (fps <= 0) {
+                fps = 20;
+                spdlog::error("FPS cannot be <= 0!");
+                return 1;
+            }
+        }
+    }
+    // finally init SDL
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         spdlog::error("Failed to initialize SDL: {}.", SDL_GetError());
     }
     SDL_Window *window;
     SDL_Renderer *renderer;
+
+    const int width = chp::WIDTH * scale_factor,
+              height = chp::HEIGHT * scale_factor;
+
     if (!SDL_CreateWindowAndRenderer(
-            "CHIPOLATA - PIRATED GAME", WIDTH, HEIGHT, 0, &window, &renderer)) {
+            "CHIPOLATA - PIRATED GAME", width, height, 0, &window, &renderer)) {
         spdlog::error("Failed to create window and renderer: {}.",
                       SDL_GetError());
         return -1;
     }
 
-    chp::Emulator emu{"./res/space_invaders.ch8"};
+    // open the file and initialize emulator
+    chp::Emulator emu{file};
+    // if error
+    if (emu.get_state() == chp::Emulator::State::QUIT) {
+        return -1;
+    }
     spdlog::info("Emulator successfully initialized!");
+    spdlog::info("  Scale Factor: {}", scale_factor);
+    spdlog::info("  FPS: {}", fps);
 
     bool running = true;
     uint64_t time = SDL_GetTicksNS();
@@ -55,23 +93,19 @@ int main() {
         }
         emu.update_keys(keys);
 
-        for (int i = 0; i < INSTRUCTIONS_PER_SECOND / FPS; ++i) {
+        for (int i = 0; i < INSTRUCTIONS_PER_SECOND / fps; ++i) {
             emu.cycle();
         }
         emu.timers();
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-        emu.render(renderer);
+        emu.render(renderer, scale_factor);
 
         SDL_RenderPresent(renderer);
         uint64_t delay =
-            std::max(1.0 / FPS * 1000000000 - (SDL_GetTicksNS() - time), 0.0);
-        // printf("delay: %ld", delay);
+            std::max(1.0 / fps * 1000000000.0 - (SDL_GetTicksNS() - time), 0.0);
         SDL_DelayNS(delay);
-        double dt = (SDL_GetTicksNS() - time) / 1000000000.0;
-        // SDL_Delay(16);
-        // printf("%lf\n", dt);
         time = SDL_GetTicksNS();
     }
 

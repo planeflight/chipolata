@@ -39,24 +39,24 @@ Emulator::Emulator(const std::string &file) {
     // open file and copy program into memory
     FILE *fd = fopen(file.c_str(), "rb");
     if (!fd) {
-        // TODO: handle this properly
-        throw std::runtime_error("Failed to open file");
+        spdlog::error("Failed to open file '{}'", file);
+        state = State::QUIT;
         return;
     }
-    const unsigned short i = pc;
 
     // Get/check rom size
     fseek(fd, 0, SEEK_END);
     const size_t rom_size = ftell(fd);
-    const size_t max_size = MEMORY_SIZE - i;
+    const size_t max_size = MEMORY_SIZE - PROG_START_ADDR;
     rewind(fd);
 
     if (rom_size > max_size) {
-        throw std::runtime_error("Rom file is too big!");
+        spdlog::error("Rom file is too big!");
+        state = State::QUIT;
         return;
     }
 
-    if (fread(&memory[i], rom_size, 1, fd) != 1) {
+    if (fread(&memory[PROG_START_ADDR], rom_size, 1, fd) != 1) {
         throw std::runtime_error("Could not read ROM file into memory.");
     }
 
@@ -67,6 +67,7 @@ Emulator::Emulator(const std::string &file) {
         memory[FONT_START_ADDR + i] = fontset[i];
     }
 }
+
 Emulator::~Emulator() {}
 
 void Emulator::cycle() {
@@ -263,8 +264,8 @@ void Emulator::timers() {
     }
 }
 
-void Emulator::quit() {
-    state = State::QUIT;
+Emulator::State Emulator::get_state() const {
+    return state;
 }
 
 void Emulator::display(unsigned short x,
@@ -310,14 +311,14 @@ void Emulator::update_keys(const bool *sdl_keys) {
     keys[0xF] = sdl_keys[SDL_SCANCODE_V];
 }
 
-void Emulator::render(SDL_Renderer *renderer) {
+void Emulator::render(SDL_Renderer *renderer, int scale_factor) {
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     for (int y = 0; y < HEIGHT; ++y) {
         for (int x = 0; x < WIDTH; ++x) {
             if (graphics[y * WIDTH + x] != 0) {
                 SDL_FRect rect;
-                rect.x = x * SCALE_FACTOR, rect.y = y * SCALE_FACTOR,
-                rect.w = SCALE_FACTOR, rect.h = SCALE_FACTOR;
+                rect.x = x * scale_factor, rect.y = y * scale_factor,
+                rect.w = scale_factor, rect.h = scale_factor;
                 SDL_RenderFillRect(renderer, &rect);
             }
         }
