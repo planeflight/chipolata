@@ -1,11 +1,11 @@
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_video.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <iostream>
 
-#include "SDL3/SDL_render.h"
-#include "SDL3/SDL_video.h"
 #include "emu.hpp"
 
 inline void print_usage() {
