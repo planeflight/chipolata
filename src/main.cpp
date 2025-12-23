@@ -26,11 +26,14 @@ int main() {
         return -1;
     }
 
-    chp::Emulator emu{"./res/IBMLogo.ch8"};
+    chp::Emulator emu{"./res/space_invaders.ch8"};
     spdlog::info("Emulator successfully initialized!");
 
     bool running = true;
     uint64_t time = SDL_GetTicksNS();
+
+    const int INSTRUCTIONS_PER_SECOND = 700;
+
     while (running) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -38,21 +41,38 @@ int main() {
                 case SDL_EVENT_QUIT:
                     running = false;
                     break;
+                case SDL_EVENT_KEY_DOWN:
+                    if (event.key.key == SDLK_SPACE) {
+                        emu.pause_toggle();
+                    }
             }
         }
 
+        SDL_PumpEvents();
         const bool *keys = SDL_GetKeyboardState(nullptr);
+        if (keys[SDL_SCANCODE_ESCAPE]) {
+            running = false;
+        }
+        emu.update_keys(keys);
+
+        for (int i = 0; i < INSTRUCTIONS_PER_SECOND / FPS; ++i) {
+            emu.cycle();
+        }
+        emu.timers();
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         emu.render(renderer);
 
         SDL_RenderPresent(renderer);
-        SDL_DelayNS(std::max(
-            (double)FPS / 1000000000 - (SDL_GetTicksNS() - time), 0.0));
+        uint64_t delay =
+            std::max(1.0 / FPS * 1000000000 - (SDL_GetTicksNS() - time), 0.0);
+        // printf("delay: %ld", delay);
+        SDL_DelayNS(delay);
+        double dt = (SDL_GetTicksNS() - time) / 1000000000.0;
+        // SDL_Delay(16);
+        // printf("%lf\n", dt);
         time = SDL_GetTicksNS();
-
-        emu.cycle();
     }
 
     SDL_DestroyRenderer(renderer);

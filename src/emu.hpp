@@ -10,10 +10,13 @@ namespace chp {
 
 constexpr size_t MEMORY_SIZE = 4096;
 constexpr size_t NUM_REGISTERS = 16;
+constexpr size_t NUM_KEYS = 16;
 constexpr size_t WIDTH = 64;
 constexpr size_t HEIGHT = 32;
 
 constexpr size_t SCALE_FACTOR = 20;
+constexpr size_t FONTSET_SIZE = 80;
+constexpr size_t FONT_START_ADDR = 0x50;
 
 class Emulator {
   public:
@@ -21,12 +24,15 @@ class Emulator {
     ~Emulator();
 
     void cycle();
+    void timers();
     void quit();
 
     void display(unsigned short x, unsigned short y, unsigned short height);
-    void update_keys();
+    void update_keys(const bool *sdl_keys);
 
     void render(SDL_Renderer *renderer);
+
+    void pause_toggle();
 
   private:
     // 0x000-0x1FF - Chip 8 interpreter (contains font set in emu)
@@ -42,17 +48,16 @@ class Emulator {
     unsigned short stack[16];
     unsigned short sp = 0;
     // HEX based keypad 0xF
-    unsigned char keys[16];
+    bool keys[NUM_KEYS];
 
     // current opcode
     unsigned short opcode = 0;
 
-    enum class State { QUIT, RUN } state;
+    enum class State { QUIT, PAUSE, RUN } state = Emulator::State::RUN;
     int scale_factor = 1;
 
     unsigned char delay_timer = 0, sound_timer = 0;
 
-    bool switch_next = false;
     bool draw = false;
 };
 
