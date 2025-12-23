@@ -59,8 +59,6 @@ class Emulator {
     int scale_factor = 1;
 
     unsigned char delay_timer = 0, sound_timer = 0;
-
-    bool draw = false;
 };
 
 } // namespace chp

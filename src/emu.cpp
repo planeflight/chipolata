@@ -97,7 +97,6 @@ void Emulator::cycle() {
             if (opcode == 0x00E0) // 0x00E0: Clears the screen
             {
                 memset(graphics, 0, WIDTH * HEIGHT);
-                draw = true;
             } else if (opcode == 0x00EE) // 0x00EE: Returns from subroutine
             {
                 if (sp == 0) {
@@ -190,7 +189,6 @@ void Emulator::cycle() {
             break;
         case 0xD000: // 0xDXYN: Display(Vx, Vy, N)
             display(reg_V[X], reg_V[Y], N);
-            draw = true;
             break;
         case 0xE000:
             switch (opcode & 0x000F) {
